@@ -1,12 +1,29 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { sortLeaderboard } from "./leaderboard";
 
 // Plain server-side client — no @supabase/ssr needed since this app has no
 // Auth/session/cookies at all, every call happens in a Server Component or
 // Server Action, and nothing here is ever imported from a Client Component
 // (the "server-only" import above turns that mistake into a build error).
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+//
+// Built lazily (not at module scope) so that merely importing this file
+// during Next's build-time page-data collection can't crash the whole
+// build if the env vars aren't set yet — the error only surfaces when a
+// request actually needs the database, not at build time.
+let cachedClient: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (!cachedClient) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      throw new Error("SUPABASE_URL and SUPABASE_ANON_KEY must be set");
+    }
+    cachedClient = createClient(url, key);
+  }
+  return cachedClient;
+}
 
 const RESULTS_TABLE = "results";
 
@@ -73,7 +90,7 @@ function toMatchRecord(row: ResultsRow): MatchRecord {
 }
 
 export async function insertMatchResult(record: NewMatchRecord): Promise<void> {
-  const { error } = await supabase.from(RESULTS_TABLE).insert({
+  const { error } = await getSupabaseClient().from(RESULTS_TABLE).insert({
     white_name: record.whiteName,
     black_name: record.blackName,
     winner_name: record.winnerName,
@@ -87,7 +104,7 @@ export async function insertMatchResult(record: NewMatchRecord): Promise<void> {
 }
 
 export async function getRecentMatches(limit = 20): Promise<MatchRecord[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from(RESULTS_TABLE)
     .select(
       "id, white_name, black_name, winner_name, result, end_reason, time_control, move_count, duration_seconds, created_at"
@@ -112,7 +129,7 @@ export interface LeaderboardEntry {
 const LEADERBOARD_SOURCE_ROW_LIMIT = 5000;
 
 export async function getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseClient()
     .from(RESULTS_TABLE)
     .select("winner_name, move_count")
     .not("winner_name", "is", null)
