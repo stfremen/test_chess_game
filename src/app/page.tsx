@@ -1,12 +1,12 @@
+import { connection } from "next/server";
 import ChessGame from "@/components/ChessGame";
 import { getLeaderboard, getRecentMatches, type LeaderboardEntry, type MatchRecord } from "@/lib/db";
 
-// This page's data changes on every finished game (via revalidatePath) and
-// depends on Supabase being reachable — render it fresh per request rather
-// than having Next.js try to prerender it at build time.
-export const dynamic = "force-dynamic";
-
 export default async function Home() {
+  // connection() is the Next.js 16 way to ensure this page is always
+  // rendered on a live request, never prerendered at build time.
+  await connection();
+
   let initialMatches: MatchRecord[] = [];
   let initialLeaderboard: LeaderboardEntry[] = [];
   try {
