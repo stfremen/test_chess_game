@@ -12,6 +12,7 @@ import { saveMatchResult } from "@/app/actions";
 import { elapsedMs, nowId, nowIso } from "@/lib/time";
 import { DEFAULT_BOARD_THEME_ID, getBoardTheme } from "@/lib/themes";
 import { DEFAULT_PIECE_STYLE_ID, getPieceStyle } from "@/lib/pieceStyles";
+import { sortLeaderboard } from "@/lib/leaderboard";
 import type {
   EndReason,
   GameResult,
@@ -55,10 +56,6 @@ function snapshotOf(chess: Chess): { board: BoardSquare[][]; checkSquare: Square
   if (!chess.isCheck()) return { board, checkSquare: null };
   const kingSquares = chess.findPiece({ type: "k", color: chess.turn() });
   return { board, checkSquare: kingSquares[0] ?? null };
-}
-
-function sortLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
-  return [...entries].sort((a, b) => b.wins - a.wins || a.bestMoveCount - b.bestMoveCount);
 }
 
 export default function ChessGame({
